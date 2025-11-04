@@ -7,10 +7,10 @@ app = Flask(__name__)
 def home():
 	# Connect to MySQL/MariaDB
 	conn = mysql.connector.connect(
-	host="localhost",
-	user="exampleuser",
-	password="change_this_strong_password",
-	database="exampledb"
+		host="localhost",
+		user="exampleuser",
+		password="change_this_strong_password",
+		database="exampledb"
 	)
 	cursor = conn.cursor()
 	cursor.execute("SELECT NOW()")
@@ -21,4 +21,4 @@ def home():
 	return f"<h1>{result[0]}</h1>"
 
 if __name__ == '__main__':
-app.run(host='0.0.0.0', port=5000)
+	app.run(host='0.0.0.0', port=5000)
