@@ -32,12 +32,47 @@ TEMPLATE = """
       -webkit-font-smoothing:antialiased;
       -moz-osx-font-smoothing:grayscale;
     }
+    .menu-bar{
+      width:100%;
+      background:rgba(255,255,255,0.02);
+      backdrop-filter:blur(6px);
+      border-bottom:1px solid rgba(255,255,255,0.05);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:12px 24px;
+      box-sizing:border-box;
+      position:fixed;
+      top:0;
+      left:0;
+      z-index:10;
+    }
+    .menu-title{
+      font-weight:600;
+      font-size:16px;
+      color:#e6eef8;
+      letter-spacing:-0.01em;
+    }
+    .menu-button{
+      padding:8px 14px;
+      background:linear-gradient(135deg,var(--accent),#2563eb);
+      color:white;
+      border:none;
+      border-radius:8px;
+      font-weight:600;
+      cursor:pointer;
+      transition:opacity 0.15s ease, transform 0.15s ease;
+    }
+    .menu-button:hover{
+      opacity:0.9;
+      transform:translateY(-1px);
+    }
     .wrap{
       min-height:100%;
       display:flex;
       align-items:center;
       justify-content:center;
-      padding:32px;
+      padding:100px 32px 32px;
       box-sizing:border-box;
     }
     .card{
@@ -133,20 +168,24 @@ TEMPLATE = """
   </style>
 </head>
 <body>
+  <div class="menu-bar">
+    <div class="menu-title">DB Monitor</div>
+    <button class="menu-button" onclick="window.location.href='/data-analysis/'">Go to Data Analysis</button>
+  </div>
+
   <div class="wrap">
     <div class="card" role="main" aria-live="polite">
       <div class="header">
         <div class="logo">DB</div>
         <div>
           <h1>Database time</h1>
-          <p class="lead">Showing the current time reported by your MySQL / MariaDB server</p>
+          <p class="lead">Showing the current time reported by your MySQL server</p>
         </div>
       </div>
 
       <div class="time" id="timeBlock">
         <div>
           <div class="big" id="timeText">{{ time_str }}</div>
-          <div class="meta">server timezone: <span class="badge">{{ tz }}</span></div>
         </div>
 
         <div style="margin-left:auto; text-align:right;">
@@ -156,8 +195,7 @@ TEMPLATE = """
       </div>
 
       <div class="footer">
-        <div class="small">Auto-refreshes every 5 seconds (client-side). Use endpoint <code>/now</code> for JSON.</div>
-        <div class="small">If times look off, verify DB server timezone and system clock.</div>
+        <div class="small">Auto-refreshes every 5 seconds (client-side).</div>
       </div>
     </div>
   </div>
@@ -183,7 +221,6 @@ TEMPLATE = """
         const resp = await fetch("/now", { cache: "no-store" });
         if(!resp.ok) throw new Error("non-200 response");
         const data = await resp.json();
-        // data.time expected as ISO string
         timeText.textContent = data.time;
         updatedAt.textContent = "last updated: " + new Date().toLocaleString();
         setStatus(true);
@@ -193,9 +230,7 @@ TEMPLATE = """
       }
     }
 
-    // initial refresh every 5 seconds
     setInterval(fetchNow, 5000);
-    // fetch once on load after short delay to avoid race
     window.addEventListener("load", () => setTimeout(fetchNow, 200));
   </script>
 </body>
@@ -208,24 +243,20 @@ def get_db_now():
     try:
         conn = mysql.connector.connect(
             host="localhost",
-            user="exampleuser",
-            password="change_this_strong_password",
-            database="exampledb",
+            user="root",
+            password="juho",
+            database="co_concentration",
             connection_timeout=5
         )
         cursor = conn.cursor()
         cursor.execute("SELECT NOW(), @@global.time_zone, @@session.time_zone")
         row = cursor.fetchone()
         if row and row[0]:
-            # row[0] is a datetime returned by connector
             db_time = row[0]
             tz_global = row[1] or "SYSTEM"
             tz_session = row[2] or "SYSTEM"
             return db_time, tz_global, tz_session
-        # fallback to local time if DB did not respond with a time
-        return datetime.utcnow(), "UNKNOWN", "UNKNOWN"
     except Exception as e:
-        # in a real app you might log the exception
         return datetime.utcnow(), "ERROR", "ERROR"
     finally:
         if cursor:
